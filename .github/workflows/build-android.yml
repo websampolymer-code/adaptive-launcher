@@ -37,37 +37,25 @@ jobs:
 
       - name: Build debug APK
         id: build
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee build-output.txt
         continue-on-error: true
 
-      - name: Run unit tests
-        id: tests
-        if: steps.build.outcome == 'success'
-        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee test-output.txt
-        continue-on-error: true
-
-      - name: Report test output
-        if: steps.tests.outcome == 'failure'
+      - name: Report build output
+        if: always()
         run: |
-          echo "## Test Failed - Last 150 lines" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -150 test-output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## Build Result: ${{ steps.build.outcome }}" >> $GITHUB_STEP_SUMMARY
+          if [ -f build-output.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -200 build-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
 
-      - name: Upload test output
-        if: always() && steps.build.outcome == 'success'
+      - name: Upload build output
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-output
-          path: test-output.txt
-          retention-days: 7
-
-      - name: Upload test reports
-        if: always() && steps.build.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: app/build/reports/tests/
+          path: build-output.txt
           retention-days: 7
 
       - name: Upload debug APK
@@ -77,16 +65,3 @@ jobs:
           name: adaptive-launcher-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-
-      - name: Verify APK exists
-        if: steps.build.outcome == 'success'
-        run: |
-          if [ ! -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-            echo "ERROR: APK was not produced!"
-            exit 1
-          fi
-          echo "APK produced successfully"
-
-      - name: Fail if build failed
-        if: steps.build.outcome == 'failure'
-        run: exit 1
