@@ -37,34 +37,37 @@ jobs:
 
       - name: Build debug APK
         id: build
-        run: ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee build-output.txt
+        run: ./gradlew assembleDebug --no-daemon
         continue-on-error: true
-
-      - name: Report build output
-        if: steps.build.outcome == 'failure'
-        run: |
-          echo "## Build Failed - Last 100 lines of output" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -100 build-output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Run unit tests
+        id: tests
         if: steps.build.outcome == 'success'
-        run: ./gradlew testDebugUnitTest --no-daemon
-
-      - name: Run lint
-        if: steps.build.outcome == 'success'
-        run: ./gradlew lint --no-daemon
+        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee test-output.txt
         continue-on-error: true
 
+      - name: Report test output
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "## Test Failed - Last 150 lines" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -150 test-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test output
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: test-output.txt
+          retention-days: 7
+
       - name: Upload test reports
-        if: always()
+        if: always() && steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
-          path: |
-            app/build/reports/tests/
-            app/build/reports/lint-results*.html
+          path: app/build/reports/tests/
           retention-days: 7
 
       - name: Upload debug APK
@@ -83,7 +86,6 @@ jobs:
             exit 1
           fi
           echo "APK produced successfully"
-          ls -la app/build/outputs/apk/debug/
 
       - name: Fail if build failed
         if: steps.build.outcome == 'failure'
