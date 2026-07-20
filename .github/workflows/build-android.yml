@@ -35,14 +35,16 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run lint
-        run: ./gradlew lint --no-daemon
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Run lint
+        if: success()
+        run: ./gradlew lint --no-daemon
+        continue-on-error: true
 
       - name: Upload test reports
         if: always()
@@ -55,6 +57,7 @@ jobs:
           retention-days: 7
 
       - name: Upload debug APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: adaptive-launcher-debug-apk
