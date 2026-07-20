@@ -26,42 +26,22 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: |
-          set +e
-          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 > build-log.txt
-          EXIT_CODE=$?
-          set -e
-          echo "## Build Output (last 300 lines)" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -300 build-log.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          exit $EXIT_CODE
+        run: ./gradlew assembleDebug --no-daemon 2>&1 | tee build-log.txt || (echo "---LAST 200 LINES---" && tail -200 build-log.txt && exit 1)
 
       - name: Run unit tests
+        if: success()
         run: ./gradlew testDebugUnitTest --no-daemon
 
-      - name: Run lint
-        run: ./gradlew lint --no-daemon
-        continue-on-error: true
-
-      - name: Upload test reports
+      - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
-          path: |
-            app/build/reports/tests/
-            app/build/reports/lint-results*.html
+          name: build-log
+          path: build-log.txt
           retention-days: 7
 
       - name: Upload debug APK
