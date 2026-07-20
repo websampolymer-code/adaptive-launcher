@@ -5,8 +5,6 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.adaptivelauncher.app.LauncherApp
-import com.adaptivelauncher.app.data.db.FolderApplicationEntity
-import com.adaptivelauncher.app.data.db.FolderEntity
 import com.adaptivelauncher.app.data.db.HomeScreenItemEntity
 import com.adaptivelauncher.app.data.db.LauncherApplicationEntity
 import com.adaptivelauncher.app.data.repository.AppRepository
@@ -16,9 +14,7 @@ import com.adaptivelauncher.app.data.repository.UsageRepository
 import com.adaptivelauncher.app.usage.UsageTracker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {

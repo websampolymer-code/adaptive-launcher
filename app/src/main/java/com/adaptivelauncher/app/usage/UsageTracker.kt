@@ -2,7 +2,6 @@ package com.adaptivelauncher.app.usage
 
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.os.Build
 import com.adaptivelauncher.app.data.db.UsageSummaryEntity
 import com.adaptivelauncher.app.data.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
