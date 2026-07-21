@@ -31,49 +31,42 @@ jobs:
 
       - name: Build debug APK
         id: build
-        run: ./gradlew assembleDebug --no-daemon 2>&1 | tee build-output.txt; exit ${PIPESTATUS[0]}
-        continue-on-error: true
-
-      - name: Show build output on failure
-        if: steps.build.outcome == 'failure'
-        run: |
-          echo "## Build Failed - Last 150 lines:" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -150 build-output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload build output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: build-output.txt
-          retention-days: 7
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Run unit tests
-        if: steps.build.outcome == 'success'
+        if: success()
         run: ./gradlew testDebugUnitTest --no-daemon
         continue-on-error: true
 
       - name: Run lint
-        if: steps.build.outcome == 'success'
+        if: success()
         run: ./gradlew lint --no-daemon
         continue-on-error: true
 
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results*.html
+          retention-days: 7
+
       - name: Upload debug APK
-        if: steps.build.outcome == 'success'
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: adaptive-launcher-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Verify build
-        if: steps.build.outcome == 'success'
+      - name: Verify APK exists
+        if: success()
         run: |
-          if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-            echo "APK produced successfully"
-            ls -la app/build/outputs/apk/debug/
-          else
-            echo "WARNING: APK not found but build succeeded"
+          if [ ! -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            echo "ERROR: APK was not produced!"
+            exit 1
           fi
+          echo "APK produced successfully"
+          ls -la app/build/outputs/apk/debug/
