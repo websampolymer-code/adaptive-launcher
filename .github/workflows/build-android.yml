@@ -30,7 +30,18 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          for i in 1 2 3; do
+            echo "Attempt $i of 3..."
+            if ./gradlew assembleDebug --no-daemon; then
+              echo "Build succeeded on attempt $i"
+              exit 0
+            fi
+            echo "Build failed on attempt $i, retrying..."
+            sleep 10
+          done
+          echo "All 3 attempts failed"
+          exit 1
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
