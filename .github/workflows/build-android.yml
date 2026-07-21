@@ -26,49 +26,37 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        id: build
-        run: |
-          ./gradlew assembleDebug --no-daemon 2>&1 | tee build-log.txt
-          exit ${PIPESTATUS[0]}
+      - name: Build debug APK (retry 1)
+        id: build1
+        run: ./gradlew assembleDebug --no-daemon
         continue-on-error: true
 
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build-log.txt
-          retention-days: 7
+      - name: Build debug APK (retry 2)
+        if: steps.build1.outcome == 'failure'
+        id: build2
+        run: ./gradlew assembleDebug --no-daemon
+        continue-on-error: true
+
+      - name: Build debug APK (retry 3)
+        if: steps.build2.outcome == 'failure'
+        id: build3
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Run unit tests
-        if: steps.build.outcome == 'success'
-        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee test-log.txt
+        if: success()
+        run: ./gradlew testDebugUnitTest --no-daemon
         continue-on-error: true
-
-      - name: Upload test log
-        if: always() && steps.build.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-log
-          path: test-log.txt
-          retention-days: 7
 
       - name: Run lint
-        if: steps.build.outcome == 'success'
+        if: success()
         run: ./gradlew lint --no-daemon
         continue-on-error: true
-
-      - name: Upload debug APK
-        if: steps.build.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: adaptive-launcher-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
 
       - name: Upload test reports
         if: always()
@@ -80,8 +68,16 @@ jobs:
             app/build/reports/lint-results*.html
           retention-days: 7
 
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-launcher-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
       - name: Verify APK exists
-        if: steps.build.outcome == 'success'
+        if: success()
         run: |
           if [ ! -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
             echo "ERROR: APK was not produced!"
