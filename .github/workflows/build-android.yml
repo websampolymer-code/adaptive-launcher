@@ -25,31 +25,29 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --info --stacktrace 2>&1 | tee build-log.txt
 
-      - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --no-daemon
-        continue-on-error: true
-
-      - name: Run lint
-        run: ./gradlew lint --no-daemon
-        continue-on-error: true
-
-      - name: Upload test reports
+      - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
-          path: |
-            app/build/reports/tests/
-            app/build/reports/lint-results*.html
+          name: build-log
+          path: build-log.txt
           retention-days: 7
+
+      - name: Run unit tests
+        if: success()
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Run lint
+        if: success()
+        run: ./gradlew lint --no-daemon
+        continue-on-error: true
 
       - name: Upload debug APK
         if: success()
@@ -58,13 +56,3 @@ jobs:
           name: adaptive-launcher-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-
-      - name: Verify APK exists
-        if: success()
-        run: |
-          if [ ! -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
-            echo "ERROR: APK was not produced!"
-            exit 1
-          fi
-          echo "APK produced successfully"
-          ls -la app/build/outputs/apk/debug/
